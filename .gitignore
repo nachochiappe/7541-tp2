@@ -30,3 +30,11 @@
 
 # Debug files
 *.dSYM/
+
+# Informes
+*.pdf
+*.tex
+*.aux
+*.synctex
+informe.txt
+*.synctex.gz
