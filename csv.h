@@ -11,7 +11,7 @@ Uso
 ===
 
     FILE* archivo = fopen(...);
-    csv_t linea = {','};
+    csv_t linea = {.delim = ','};
 
     while (csv_siguiente(&linea, archivo)) {
       printf("Primer campo: %s\n", linea.primero);
@@ -24,7 +24,7 @@ Uso
 O, para los comandos
 ====================
 
-    csv_t cmd = {':'};
+    csv_t cmd = {.delim = ':'};
 
     while (csv_siguiente(&linea, stdin)) {
       printf("Nombre comando: %s\n", linea.primero);
