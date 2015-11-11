@@ -13,4 +13,5 @@
 
 typedef struct doctor doctor_t;
 typedef struct paciente paciente_t;
+typedef struct especialidad especialidad_t;
 typedef struct parametros parametros_t;
