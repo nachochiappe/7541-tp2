@@ -55,6 +55,7 @@ paciente_t* paciente_crear(char* nombre, char* total_contribuciones) {
 	paciente->nombre = strcpy(malloc(strlen(nombre) + 1), nombre);
 	char* ptrEnd;
 	paciente->total_contribuciones = strtoull(total_contribuciones, &ptrEnd, 10);
+	if (paciente->total_contribuciones == 0) return NULL;
 	return paciente;
 }
 
@@ -77,6 +78,11 @@ parametros_t* obtener_parametros() {
 	
 	csv_t cmd = {.delim = ':'};
 	csv_siguiente(&cmd, stdin);
+	if (strcmp(cmd.segundo, "") == 0) {
+		printf(EINVAL_CMD);
+		csv_terminar(&cmd);
+		return NULL;
+	}
 	parametros->comando = strcpy(malloc(strlen(cmd.primero) + 1), cmd.primero);
 	parametros->param1 = strcpy(malloc(strlen(cmd.segundo) + 1), cmd.segundo);
 	csv_terminar(&cmd);
@@ -116,6 +122,7 @@ hash_t* generar_hash_pacientes(char* archivo_pacientes) {
 	hash_t* hash_pacientes = hash_crear(NULL);
 	while (csv_siguiente(&linea, csv_pacientes)) {
 		paciente_t* paciente = paciente_crear(linea.primero, linea.segundo);
+		if (!paciente) return NULL;
 		hash_guardar(hash_pacientes, paciente->nombre, paciente);
 	}
 	fclose(csv_pacientes);
@@ -189,6 +196,7 @@ cmp_func_t cmp_string = &comparar_string;
 
 
 void mostrar_informe(hash_t* hash_doctores) {
+	printf(NUM_DOCTORES, hash_cantidad(hash_doctores));	
 	heap_t* doctores_orden = heap_crear(cmp_string);
 	if (!doctores_orden) return;
 	hash_iter_t* iter = hash_iter_crear(hash_doctores);
@@ -200,7 +208,7 @@ void mostrar_informe(hash_t* hash_doctores) {
 		hash_iter_avanzar(iter);
 	}
 	hash_iter_destruir(iter);
-	int i = 1;
+	unsigned int i = 1;
 	while (!heap_esta_vacio(doctores_orden)){
 		doctor_t* doctor = hash_obtener(hash_doctores, heap_desencolar(doctores_orden));
 		printf(INFORME_DOCTOR, i, doctor->nombre, doctor->especialidad, doctor->cant_atendidos);
@@ -227,7 +235,7 @@ int main(int argc, char *argv[]) {
 	bool fin = false;
 	do {
 		parametros_t* parametros = obtener_parametros();
-		if (!parametros->comando) fin = true;
+		if (!parametros) fin = true;
 			else if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
 				else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros, hash_doctores, hash_especialidades);
 					else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(hash_doctores);
