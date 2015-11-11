@@ -26,14 +26,11 @@ struct parametros {
 	char* param2;
 };
 
-int comp(const void* clave_vieja, const void* clave_nueva) {
-	// Si las claves son iguales, devuelve 0
-	unsigned long long vieja = ((paciente_t*) clave_vieja)->total_contribuciones;
-	unsigned long long nueva = ((paciente_t*) clave_nueva)->total_contribuciones;
-	if (vieja == nueva) return 0;
-	// Si clave nueva es mayor a clave vieja, return -1
-	else if (nueva > vieja) return (-1);
-	// Si clave nueva es menor a clave vieja, return 1
+int comp(const void* clave_a, const void* clave_b) {
+	unsigned long long a = ((paciente_t*) clave_a)->total_contribuciones;
+	unsigned long long b = ((paciente_t*) clave_b)->total_contribuciones;
+	if (a == b) return 0;
+	else if (a < b) return (-1);
 	return 1;
 }
 
@@ -137,9 +134,10 @@ hash_t* generar_hash_especialidades(hash_t* hash_doctores) {
 	while (!hash_iter_al_final(iter)) {
 		const char *clave = hash_iter_ver_actual(iter);
 		doctor_t* doctor = hash_obtener(hash_doctores, clave);
-		especialidad_t* especialidad = especialidad_crear(doctor->especialidad);
-		if (hash_pertenece(hash_especialidades, especialidad->nombre)) free(especialidad);
-		else hash_guardar(hash_especialidades, especialidad->nombre, especialidad);
+		if (!hash_pertenece(hash_especialidades, doctor->especialidad)){
+			especialidad_t* especialidad = especialidad_crear(doctor->especialidad);
+			hash_guardar(hash_especialidades, especialidad->nombre, especialidad);
+		}
 		hash_iter_avanzar(iter);
 	}
 	hash_iter_destruir(iter);
@@ -148,31 +146,42 @@ hash_t* generar_hash_especialidades(hash_t* hash_doctores) {
 }
 
 void pedir_turno(parametros_t* parametros, hash_t* hash_pacientes, hash_t* hash_especialidades) {
-	if (!hash_pertenece(hash_pacientes, parametros->param1)) {
+	paciente_t* paciente = hash_obtener(hash_pacientes, parametros->param1);
+	if (!paciente) {
 		printf(ENOENT_PACIENTE, parametros->param1);
 		return;
 	}
-	if (!hash_pertenece(hash_especialidades, parametros->param2)) {
+	especialidad_t* especialidad = hash_obtener(hash_especialidades, parametros->param2);
+	if (!especialidad) {
 		printf(ENOENT_ESPECIALIDAD, parametros->param2);
 		return;
 	}
-	paciente_t* paciente = hash_obtener(hash_pacientes, parametros->param1);
-	especialidad_t* especialidad = hash_obtener(hash_especialidades, parametros->param2);
 	if (heap_encolar(especialidad->lista_de_espera, paciente)) {
 		printf(PACIENTE_ENCOLADO, parametros->param1);
-		size_t cant_en_espera = heap_cantidad(especialidad->lista_de_espera);
-		printf(NUM_PACIENTES_ESPERAN, cant_en_espera, parametros->param2);
+		printf(NUM_PACIENTES_ESPERAN, heap_cantidad(especialidad->lista_de_espera), especialidad->nombre);
 	}
 	return;
 }
 
-void atender_siguiente(parametros_t* parametros) {
-	printf("Entre a atender_siguiente\n");
+void atender_siguiente(parametros_t* parametros, hash_t* hash_doctores, hash_t* hash_especialidades) {
+	doctor_t* doctor = hash_obtener(hash_doctores, parametros->param1);
+	if (!doctor) {
+		printf(ENOENT_DOCTOR, parametros->param1);
+		return;
+	}
+	especialidad_t* especialidad = hash_obtener(hash_especialidades, doctor->especialidad);
+	if (!heap_cantidad(especialidad->lista_de_espera)){
+		printf(CERO_PACIENTES_ESPERAN);
+		return;
+	}
+	paciente_t* paciente = heap_desencolar(especialidad->lista_de_espera);
+	printf(PACIENTE_ATENDIDO, paciente->nombre);
+	printf(NUM_PACIENTES_ESPERAN, heap_cantidad(especialidad->lista_de_espera), especialidad->nombre);
 	return;
 }
 
 void mostrar_informe(parametros_t* parametros) {
-	printf("Entre a mostrar_informe\n");
+	
 	return;
 }
 
@@ -196,7 +205,7 @@ int main(int argc, char *argv[]) {
 		parametros_t* parametros = obtener_parametros();
 		if (!parametros->comando) fin = true;
 			else if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
-				else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros);
+				else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros, hash_doctores, hash_especialidades);
 					else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(parametros);
 						else {
 							printf(ENOENT_CMD, parametros->comando, parametros->param1);
