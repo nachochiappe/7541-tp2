@@ -158,7 +158,7 @@ void pedir_turno(parametros_t* parametros, hash_t* hash_pacientes, hash_t* hash_
 	}
 	paciente_t* paciente = hash_obtener(hash_pacientes, parametros->param1);
 	especialidad_t* especialidad = hash_obtener(hash_especialidades, parametros->param2);
-	if (heap_encolar(especialidad->lista_de_espera, &paciente)) {
+	if (heap_encolar(especialidad->lista_de_espera, paciente)) {
 		printf(PACIENTE_ENCOLADO, parametros->param1);
 		size_t cant_en_espera = heap_cantidad(especialidad->lista_de_espera);
 		printf(NUM_PACIENTES_ESPERAN, cant_en_espera, parametros->param2);
