@@ -78,20 +78,23 @@ parametros_t* obtener_parametros() {
 	
 	csv_t cmd = {.delim = ':'};
 	csv_siguiente(&cmd, stdin);
-	if (strcmp(cmd.segundo, "") == 0) {
-		if (strcmp(cmd.primero, "") != 0) printf(EINVAL_CMD);
-		else {
-			csv_terminar(&cmd);
-			return NULL;
+	if (cmd.primero) {
+		if (strcmp(cmd.segundo, "") == 0) {
+			if (strcmp(cmd.primero, "") != 0) printf(EINVAL_CMD);
+			else {
+				csv_terminar(&cmd);
+				return NULL;
+			}
 		}
+		else {
+			parametros->comando = strcpy(malloc(strlen(cmd.primero) + 1), cmd.primero);
+			parametros->param1 = strcpy(malloc(strlen(cmd.segundo) + 1), cmd.segundo);
+			split(',', parametros->param1, &parametros->param2);
+		}
+		csv_terminar(&cmd);
+		return parametros;
 	}
-	else {
-		parametros->comando = strcpy(malloc(strlen(cmd.primero) + 1), cmd.primero);
-		parametros->param1 = strcpy(malloc(strlen(cmd.segundo) + 1), cmd.segundo);
-		split(',', parametros->param1, &parametros->param2);
-	}
-	csv_terminar(&cmd);
-	return parametros;
+	return NULL;
 }
  
 /***********************************
