@@ -103,6 +103,7 @@ hash_t* generar_hash_doctores(char* archivo_doctores) {
 	csv_t linea = {.delim = ','};
 	hash_t* hash_doctores = hash_crear(NULL);
 	while (csv_siguiente(&linea, csv_doctores)) {
+		if (strcmp(linea.segundo, "") == 0) return NULL;
 		doctor_t* doctor = doctor_crear(linea.primero, linea.segundo);
 		hash_guardar(hash_doctores, doctor->nombre, doctor);
 	}
@@ -121,6 +122,7 @@ hash_t* generar_hash_pacientes(char* archivo_pacientes) {
 	csv_t linea = {.delim = ','};
 	hash_t* hash_pacientes = hash_crear(NULL);
 	while (csv_siguiente(&linea, csv_pacientes)) {
+		if (strcmp(linea.segundo, "") == 0) return NULL;
 		paciente_t* paciente = paciente_crear(linea.primero, linea.segundo);
 		if (!paciente) return NULL;
 		hash_guardar(hash_pacientes, paciente->nombre, paciente);
