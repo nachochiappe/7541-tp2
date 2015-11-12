@@ -9,28 +9,28 @@ VALGRIND= valgrind --leak-check=full --track-origins=yes
 
 all: $(EXEC)
 
-abb.o: abb.c abb.h
+abb: abb.c abb.h
 	$(CC) $(CFLAGS) -c abb.c
 
-clinica.o: clinica.c clinica.h
+clinica: clinica.c clinica.h
 	$(CC) $(CFLAGS) -c clinica.c
 
-cola.o: cola.c cola.h
+cola: cola.c cola.h
 	$(CC) $(CFLAGS) -c cola.c
 
-csv.o: csv.c csv.h
+csv: csv.c csv.h
 	$(CC) $(CFLAGS) -c csv.c
 
-hash.o: hash.c hash.h
+hash: hash.c hash.h
 	$(CC) $(CFLAGS) -c hash.c
 
-heap.o: heap.c heap.h
+heap: heap.c heap.h
 	$(CC) $(CFLAGS) -c heap.c
 
-lista.o: lista.c lista.h
+lista: lista.c lista.h
 	$(CC) $(CFLAGS) -c lista.c
 
-pila.o: pila.c pila.h
+pila: pila.c pila.h
 	$(CC) $(CFLAGS) -c pila.c
 
 $(EXEC): $(OBJECTS)
