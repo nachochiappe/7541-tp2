@@ -79,14 +79,18 @@ parametros_t* obtener_parametros() {
 	csv_t cmd = {.delim = ':'};
 	csv_siguiente(&cmd, stdin);
 	if (strcmp(cmd.segundo, "") == 0) {
-		printf(EINVAL_CMD);
-		csv_terminar(&cmd);
-		return NULL;
+		if (strcmp(cmd.primero, "") != 0) printf(EINVAL_CMD);
+		else {
+			csv_terminar(&cmd);
+			return NULL;
+		}
 	}
-	parametros->comando = strcpy(malloc(strlen(cmd.primero) + 1), cmd.primero);
-	parametros->param1 = strcpy(malloc(strlen(cmd.segundo) + 1), cmd.segundo);
+	else {
+		parametros->comando = strcpy(malloc(strlen(cmd.primero) + 1), cmd.primero);
+		parametros->param1 = strcpy(malloc(strlen(cmd.segundo) + 1), cmd.segundo);
+		split(',', parametros->param1, &parametros->param2);
+	}
 	csv_terminar(&cmd);
-	split(',', parametros->param1, &parametros->param2);
 	return parametros;
 }
  
@@ -242,12 +246,12 @@ int main(int argc, char *argv[]) {
 	do {
 		parametros_t* parametros = obtener_parametros();
 		if (!parametros) fin = true;
-			else if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
+			else if (parametros->comando) {
+				if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
 				else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros, hash_doctores, hash_especialidades);
-					else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(hash_doctores);
-						else {
-							printf(ENOENT_CMD, parametros->comando, parametros->param1);
-						}
+				else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(hash_doctores);
+				else printf(ENOENT_CMD, parametros->comando, parametros->param1);
+			}
 		free(parametros);
 	} while (!fin);
 	return 0;
