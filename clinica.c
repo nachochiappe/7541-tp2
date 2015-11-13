@@ -27,7 +27,7 @@ struct parametros {
 };
 
 // Funcion que compara el total de contribuciones entre dos pacientes.
-int comp(const void* clave_a, const void* clave_b) {
+int comp(const void* clave_a, const void* clave_b) {	
 	unsigned long long a = ((paciente_t*) clave_a)->total_contribuciones;
 	unsigned long long b = ((paciente_t*) clave_b)->total_contribuciones;
 	if (a == b) return 0;
@@ -154,11 +154,6 @@ parametros_t* obtener_parametros() {
 	if (cmd.primero) {
 		if (strcmp(cmd.segundo, "") == 0) {
 			if (strcmp(cmd.primero, "") != 0) printf(EINVAL_CMD);
-			else {
-				csv_terminar(&cmd);
-				parametros_destruir(parametros);
-				return NULL;
-			}
 		}
 		else {
 			parametros->comando = strcpy(malloc(strlen(cmd.primero) + 1), cmd.primero);
@@ -168,6 +163,7 @@ parametros_t* obtener_parametros() {
 		csv_terminar(&cmd);
 		return parametros;
 	}
+	csv_terminar(&cmd);
 	parametros_destruir(parametros);
 	return NULL;
 }
@@ -360,14 +356,17 @@ void ejecutar_programa(hash_t* hash_doctores, hash_t* hash_pacientes, hash_t* ha
 		else if (parametros->comando) {
 			if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
 			else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros, hash_doctores, hash_especialidades);
-			else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(hash_doctores);
+			else if (strcmp(parametros->comando, "INFORME") == 0) {
+				if (strcmp(parametros->param1, "DOCTORES") == 0) mostrar_informe(hash_doctores);
+				else printf(ENOENT_CMD, parametros->comando, parametros->param1);
+			}
 			else printf(ENOENT_CMD, parametros->comando, parametros->param1);
 		}
 		parametros_destruir(parametros);
 	} while (!fin);
 	hash_destruir(hash_doctores);
-	hash_destruir(hash_pacientes);
 	hash_destruir(hash_especialidades);
+	hash_destruir(hash_pacientes);
 }
 
 /* Función main del programa. Recibe por parametro los nombres de los
