@@ -26,6 +26,7 @@ struct parametros {
 	char* param2;
 };
 
+// Funcion que compara el total de contribuciones entre dos pacientes.
 int comp(const void* clave_a, const void* clave_b) {
 	unsigned long long a = ((paciente_t*) clave_a)->total_contribuciones;
 	unsigned long long b = ((paciente_t*) clave_b)->total_contribuciones;
@@ -36,9 +37,68 @@ int comp(const void* clave_a, const void* clave_b) {
 
 cmp_func_t cmp = &comp;
 
+// Función que compara dos strings para determinar su orden alfabético.
+int comparar_string(const void* clave_a, const void* clave_b) {
+	return strcmp((char*) clave_b, (char*) clave_a);
+}
+
+cmp_func_t cmp_string = &comparar_string;
+
 /***********************************
  *        FUNCIONES AUXILIARES     *
  ***********************************/
+
+/* Funcion de destruccion para la estructura 'parametros'.
+ * Libera la memoria pedida para el parametro, y en caso
+ * de ser valido, sus miembros.
+ */
+void parametros_destruir(parametros_t* parametros){
+	if (parametros){
+		free(parametros->comando);
+		free(parametros->param1);
+	}
+	free(parametros);
+}
+
+/* Funcion de destruccion para la estructura 'doctor'.
+ * Libera la memoria pedida para el mismo, y en caso
+ * de ser valido, sus miembros. Toma un puntero generico
+ * para ser usada como funcion de destruccion en el 'hash_doctores'.
+ */
+void doctor_destruir(void* dato){
+	doctor_t* doctor = (doctor_t*) dato;
+	if (doctor){
+		free(doctor->nombre);
+		free(doctor->especialidad);
+	}
+	free(doctor);
+}
+
+/* Funcion de destruccion para la estructura 'paciente'.
+ * Libera la memoria pedida para el mismo, y en caso
+ * de ser valido, sus miembros. Toma un puntero generico
+ * para ser usada como funcion de destruccion en el 'hash_pacientes'.
+ */
+void paciente_destruir(void* dato){
+	paciente_t* paciente = (paciente_t*) dato;
+	if (paciente)
+		free(paciente->nombre);
+	free(paciente);
+}
+
+/* Funcion de destruccion para la estructura 'especialidad'.
+ * Libera la memoria pedida para el mismo, y en caso
+ * de ser valido, sus miembros. Toma un puntero generico
+ * para ser usada como funcion de destruccion en el 'hash_especialidades'.
+ */
+void especialidad_destruir(void* dato){
+	especialidad_t* especialidad = (especialidad_t*) dato;
+	if (especialidad){
+		free(especialidad->nombre);
+		heap_destruir(especialidad->lista_de_espera, NULL);
+	}
+	free(especialidad);
+}
 
 // Función auxiliar para crear un doctor según un nombre y una especialidad, pasados como parámetro.
 // Pre: Ninguna.
@@ -78,6 +138,7 @@ especialidad_t* especialidad_crear(char* nombre) {
 	return especialidad;
 }
 
+
 // Función auxiliar para parsear un texto ingresado por teclado.
 // Pre: Ninguna.
 // Post: Se devuelve el comando, y el/los parámetro(s) en una estructura, NULL si no se pudo crear la misma, o si no se ingresó un comando.
@@ -95,6 +156,7 @@ parametros_t* obtener_parametros() {
 			if (strcmp(cmd.primero, "") != 0) printf(EINVAL_CMD);
 			else {
 				csv_terminar(&cmd);
+				parametros_destruir(parametros);
 				return NULL;
 			}
 		}
@@ -106,7 +168,29 @@ parametros_t* obtener_parametros() {
 		csv_terminar(&cmd);
 		return parametros;
 	}
+	parametros_destruir(parametros);
 	return NULL;
+}
+
+/* Crea un heap de los doctores dentro del hash pasado
+ * por parametro. En caso de fallar, devuelve NULL.
+ * Si no, devuelve el heap, ordenado por prioridad segun
+ * el nombre de cada uno (alfabeticamente).
+ */
+heap_t* crear_heap_doctores(hash_t* hash_doctores){
+	heap_t* doctores_orden = heap_crear(cmp_string);
+	if (!doctores_orden) return NULL;
+
+	hash_iter_t* iter = hash_iter_crear(hash_doctores);
+	if (!iter) return NULL;
+	while (!hash_iter_al_final(iter)) {
+		const char *clave = hash_iter_ver_actual(iter);
+		doctor_t* doctor = hash_obtener(hash_doctores, clave);
+		heap_encolar(doctores_orden, doctor->nombre);
+		hash_iter_avanzar(iter);
+	}
+	hash_iter_destruir(iter);
+	return doctores_orden;
 }
  
 /***********************************
@@ -123,7 +207,7 @@ hash_t* generar_hash_doctores(char* archivo_doctores) {
 	
 	// Proceso archivo de doctores
 	csv_t linea = {.delim = ','};
-	hash_t* hash_doctores = hash_crear(NULL);
+	hash_t* hash_doctores = hash_crear(&doctor_destruir);
 	while (csv_siguiente(&linea, csv_doctores)) {
 		if (strcmp(linea.segundo, "") != 0) {
 			doctor_t* doctor = doctor_crear(linea.primero, linea.segundo);
@@ -147,7 +231,7 @@ hash_t* generar_hash_pacientes(char* archivo_pacientes) {
 	
 	// Proceso archivo de pacientes
 	csv_t linea = {.delim = ','};
-	hash_t* hash_pacientes = hash_crear(NULL);
+	hash_t* hash_pacientes = hash_crear(&paciente_destruir);
 	while (csv_siguiente(&linea, csv_pacientes)) {
 		if (strcmp(linea.segundo, "") != 0) {
 			paciente_t* paciente = paciente_crear(linea.primero, linea.segundo);
@@ -169,7 +253,7 @@ hash_t* generar_hash_especialidades(hash_t* hash_doctores) {
 	hash_iter_t* iter = hash_iter_crear(hash_doctores);
 	if (!iter) return NULL;
 	
-	hash_t* hash_especialidades = hash_crear(NULL);
+	hash_t* hash_especialidades = hash_crear(&especialidad_destruir);
 	if (!hash_especialidades) return NULL;
 	
 	while (!hash_iter_al_final(iter)) {
@@ -238,13 +322,6 @@ void atender_siguiente(parametros_t* parametros, hash_t* hash_doctores, hash_t* 
 	return;
 }
 
-// Función que compara dos strings para determinar su orden alfabético.
-int comparar_string(const void* clave_a, const void* clave_b) {
-	return strcmp((char*) clave_b, (char*) clave_a);
-}
-
-cmp_func_t cmp_string = &comparar_string;
-
 // Función que imprime la lista de doctores en orden alfabético, junto con su especialidad y el número de pacientes que atendieron desde que arrancó el sistema.
 // Pre: El hash de doctores existe.
 // Post: Ninguna.
@@ -258,27 +335,45 @@ cmp_func_t cmp_string = &comparar_string;
 // N: NOMBRE, especialidad ESPECIALIDAD, Z paciente(s) atendido(s)
 void mostrar_informe(hash_t* hash_doctores) {
 	printf(NUM_DOCTORES, hash_cantidad(hash_doctores));	
-	heap_t* doctores_orden = heap_crear(cmp_string);
+	heap_t* doctores_orden = crear_heap_doctores(hash_doctores);
 	if (!doctores_orden) return;
-	hash_iter_t* iter = hash_iter_crear(hash_doctores);
-	if (!iter) return;
-	while (!hash_iter_al_final(iter)) {
-		const char *clave = hash_iter_ver_actual(iter);
-		doctor_t* doctor = hash_obtener(hash_doctores, clave);
-		heap_encolar(doctores_orden, doctor->nombre);
-		hash_iter_avanzar(iter);
-	}
-	hash_iter_destruir(iter);
 	unsigned int i = 1;
 	while (!heap_esta_vacio(doctores_orden)){
 		doctor_t* doctor = hash_obtener(hash_doctores, heap_desencolar(doctores_orden));
 		printf(INFORME_DOCTOR, i, doctor->nombre, doctor->especialidad, doctor->cant_atendidos);
 		i++;
 	}
+	heap_destruir(doctores_orden, NULL);
 	return;
 }
 
-// Función principal del programa. Se le deben pasar por parámetro los nombres de los dos archivos CSV, sino aborta.
+/* Funcion en donde se ejecuta el programa en si. Recibe los hashes
+ * generados en el main, y queda a la espera de comandos. En caso
+ * de fallar o no recibir comando alguno (ENTER), finaliza la funcion
+ * destruyendo los hashes pasados.
+ */
+void ejecutar_programa(hash_t* hash_doctores, hash_t* hash_pacientes, hash_t* hash_especialidades){
+	bool fin = false;
+	do {
+		parametros_t* parametros = obtener_parametros();
+		if (!parametros) fin = true;
+		else if (parametros->comando) {
+			if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
+			else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros, hash_doctores, hash_especialidades);
+			else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(hash_doctores);
+			else printf(ENOENT_CMD, parametros->comando, parametros->param1);
+		}
+		parametros_destruir(parametros);
+	} while (!fin);
+	hash_destruir(hash_doctores);
+	hash_destruir(hash_pacientes);
+	hash_destruir(hash_especialidades);
+}
+
+/* Función main del programa. Recibe por parametro los nombres de los
+ * dos archivos CSV a usar. En caso de no pasar dos argumentos, o fallar
+ * en alguna parte, devuelve 1 y finaliza la ejecucion.
+ */
 int main(int argc, char *argv[]) {
 	// Si no se recibieron exactamente dos argumentos por la línea de comandos
 	if (argc != 3) {
@@ -294,17 +389,6 @@ int main(int argc, char *argv[]) {
 	hash_t* hash_especialidades = generar_hash_especialidades(hash_doctores);
 	if (!hash_especialidades) return 1;
 	
-	bool fin = false;
-	do {
-		parametros_t* parametros = obtener_parametros();
-		if (!parametros) fin = true;
-			else if (parametros->comando) {
-				if (strcmp(parametros->comando, "PEDIR_TURNO") == 0) pedir_turno(parametros, hash_pacientes, hash_especialidades);
-				else if (strcmp(parametros->comando, "ATENDER_SIGUIENTE") == 0) atender_siguiente(parametros, hash_doctores, hash_especialidades);
-				else if (strcmp(parametros->comando, "INFORME") == 0) mostrar_informe(hash_doctores);
-				else printf(ENOENT_CMD, parametros->comando, parametros->param1);
-			}
-		free(parametros);
-	} while (!fin);
+	ejecutar_programa(hash_doctores, hash_pacientes, hash_especialidades);
 	return 0;
 }
