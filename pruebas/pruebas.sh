@@ -3,26 +3,32 @@
 set -eu
 
 PROGRAMA="$1"
-RET=0
+VALGRIND="valgrind --leak-check=full --track-origins=yes --error-exitcode=2"
 
-# Correr con diff y sin Valgrind.
+RET=0
+OUT=`mktemp`
+trap "rm -f $OUT" EXIT
+
 for x in *_in; do
   b=${x%_in}
-  $PROGRAMA <${b}_in ${b}_doctores ${b}_pacientes | diff -u ${b}_out - || RET=$?
+  echo -n "Prueba $b... "
+
+  ($PROGRAMA ${b}_doctores ${b}_pacientes <${b}_in || RET=$?) |
+    diff -u --label "${b}_cátedra" --label "${b}_alumno" ${b}_out - >$OUT || :
+
+  if [[ $RET -ne 0 ]]; then
+    echo -e "programa abortó con código $RET.\n\nValgrind:"
+    $VALGRIND $PROGRAMA ${b}_doctores ${b}_pacientes <${b}_in
+    exit $RET
+
+  elif [[ -s $OUT ]]; then
+    echo -e "output incorrecto:\n"
+    cat $OUT
+    exit 1
+
+  else
+    echo -e "OK.\n\nValgrind:"
+    $VALGRIND $PROGRAMA ${b}_doctores ${b}_pacientes <${b}_in >/dev/null
+  fi
+  echo
 done
-
-if [[ $RET -eq 0 ]]; then
-  # Si no hubo errores de diff, correr con Valgrind.
-  for x in *_in; do
-      b=${x%_in}
-      valgrind --leak-check=full --track-origins=yes --error-exitcode=2 \
-          $PROGRAMA <${b}_in ${b}_doctores ${b}_pacientes >/dev/null || RET=$?
-  done
-fi
-
-if [[ $RET -eq 0 ]]; then
-  echo "OK"
-else
-  echo "ERROR"
-  exit $RET
-fi
